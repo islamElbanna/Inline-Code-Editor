@@ -3,7 +3,7 @@ let editor;
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.shiftKey && e.code === 'KeyU') {
     let focusedEle = document.activeElement
-    if (focusedEle.tagName === 'TEXTAREA') {
+    if (focusedEle.tagName === 'TEXTAREA' || focusedEle.tagName === 'DIV') {
       if (editor) {
         focusedEle.value = editor.getValue();
         editor.destroy();
@@ -28,6 +28,10 @@ function loadAce(callback) {
     const tools = document.createElement('script');
     tools.src = chrome.runtime.getURL('ace/ext-language_tools.js');
     document.head.appendChild(tools);
+
+    const inline_autocomplete = document.createElement('script');
+    inline_autocomplete.src = chrome.runtime.getURL('ace/ext-inline_autocomplete.js');
+    document.head.appendChild(inline_autocomplete);
 
     const mode = document.createElement('script');
     mode.src = chrome.runtime.getURL('ace/mode-java.js');
@@ -57,21 +61,25 @@ function activateAceEditor(textarea) {
     textarea.style.display = 'none';
     parent.insertBefore(editorDiv, textarea);
 
-    ace.require("ace/ext/language_tools");
-    editor = ace.edit(editorDiv, {
-      theme: 'ace/theme/github',
-      mode: 'ace/mode/java',
-      autoScrollEditorIntoView: true,
-      enableBasicAutocompletion: true,
-      enableSnippets: true,
-      enableLiveAutocompletion: false,
-      value: value
-    });
+    ace.require(["ace/ace", "ace/ext/language_tools", "ace/ext/inline_autocomplete"], function(ace) {
+      console.log(ace);
+      editor = ace.edit(editorDiv);
+      editor.session.setMode("ace/mode/java");
+      editor.setTheme("ace/theme/github");
+      // enable inline autocompletion
+      editor.setOptions({
+          enableBasicAutocompletion: false,
+          enableInlineAutocompletion: true,
+          enableSnippets: true,
+          enableLiveAutocompletion: true,
+          autoScrollEditorIntoView: true,
+      });
+      
+      editor.session.on('change', () => {
+        textarea.value = editor.getValue();
+      });
 
-    editor.session.on('change', () => {
-      textarea.value = editor.getValue();
-    });
-
-    textarea.dataset.aceActive = 'true';
+      textarea.dataset.aceActive = 'true';
+    });  
   });
 }

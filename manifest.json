@@ -8,7 +8,7 @@
     "content_scripts": [
       {
         "matches": ["<all_urls>"],
-        "js": ["ace/ace.js", "ace/mode-java.js", "ace/ext-language_tools.js", "ace/theme-github.js", "content.js"],
+        "js": ["ace/ace.js", "ace/mode-java.js", "ace/ext-language_tools.js", "ace/theme-github.js", "ace/ext-inline_autocomplete.js", "content.js"],
         "run_at": "document_idle"
       }
     ],
