@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "Activate ACE on Textarea",
+    "version": "1.0",
+    "description": "Turn a focused textarea into an ACE Editor using a keyboard shortcut.",
+    "permissions": ["scripting"],
+    "host_permissions": ["<all_urls>"],
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["ace/ace.js", "ace/mode-java.js", "ace/ext-language_tools.js", "ace/theme-github.js", "content.js"],
+        "run_at": "document_idle"
+      }
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["ace/**"],
+        "matches": ["<all_urls>"]
+      }
+    ]
+}
+  
