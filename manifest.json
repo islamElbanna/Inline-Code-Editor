@@ -3,8 +3,7 @@
     "name": "Inline Code Editor",
     "version": "0.01",
     "description": "Turn a focused element into an Editor.",
-    "permissions": ["storage", "contextMenus", "scripting"],
-    "host_permissions": ["<all_urls>"],
+    "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
     "background": {
         "service_worker": "background.js"
     },
