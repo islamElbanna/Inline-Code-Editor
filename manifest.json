@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Inline Code Editor",
-    "version": "1.0",
+    "version": "0.01",
     "description": "Turn a focused element into an Editor.",
     "permissions": ["storage", "contextMenus", "scripting"],
     "host_permissions": ["<all_urls>"],
@@ -11,7 +11,13 @@
     "content_scripts": [
       {
         "matches": ["<all_urls>"],
-        "js": ["ace/ace.js", "ace/ext-modelist.js", "ace/mode-java.js", "ace/snippets/java.js", "ace/mode-javascript.js", "ace/worker-javascript.js", "ace/snippets/javascript.js", "ace/ext-language_tools.js", "ace/theme-github.js", "ace/ext-inline_autocomplete.js", "content.js"],
+        "js": [
+          "ace/ace.js", "ace/ext-language_tools.js", "ace/ext-inline_autocomplete.js", "content.js",
+          "ace/mode-actionscript.js", "ace/mode-groovy.js", "ace/mode-matlab.js", "ace/mode-properties.js", "ace/mode-sql.js", "ace/mode-c_cpp.js", "ace/mode-html.js", "ace/mode-mysql.js", "ace/mode-protobuf.js", "ace/mode-sqlserver.js", "ace/mode-clojure.js", "ace/mode-java.js", "ace/mode-nginx.js", "ace/mode-puppet.js", "ace/mode-swift.js", "ace/mode-csharp.js", "ace/mode-javascript.js", "ace/mode-objectivec.js", "ace/mode-python.js", "ace/mode-text.js", "ace/mode-css.js", "ace/mode-json5.js", "ace/mode-pascal.js", "ace/mode-r.js", "ace/mode-typescript.js", "ace/mode-csv.js", "ace/mode-json.js", "ace/mode-perl.js", "ace/mode-ruby.js", "ace/mode-vue.js", "ace/mode-dockerfile.js", "ace/mode-jsp.js", "ace/mode-pgsql.js", "ace/mode-rust.js", "ace/mode-xml.js", "ace/mode-dot.js", "ace/mode-kotlin.js", "ace/mode-php.js", "ace/mode-scala.js", "ace/mode-yaml.js", "ace/mode-gitignore.js", "ace/mode-makefile.js", "ace/mode-plain_text.js", "ace/mode-sh.js", "ace/mode-golang.js", "ace/mode-markdown.js", "ace/mode-powershell.js", "ace/mode-soy_template.js",
+          "ace/snippets/actionscript.js", "ace/snippets/groovy.js", "ace/snippets/matlab.js", "ace/snippets/properties.js", "ace/snippets/sql.js", "ace/snippets/c_cpp.js", "ace/snippets/html.js", "ace/snippets/mysql.js", "ace/snippets/protobuf.js", "ace/snippets/sqlserver.js", "ace/snippets/clojure.js", "ace/snippets/java.js", "ace/snippets/nginx.js", "ace/snippets/puppet.js", "ace/snippets/swift.js", "ace/snippets/csharp.js", "ace/snippets/javascript.js", "ace/snippets/objectivec.js", "ace/snippets/python.js", "ace/snippets/text.js", "ace/snippets/css.js", "ace/snippets/json5.js", "ace/snippets/pascal.js", "ace/snippets/r.js", "ace/snippets/typescript.js", "ace/snippets/csv.js", "ace/snippets/json.js", "ace/snippets/perl.js", "ace/snippets/ruby.js", "ace/snippets/vue.js", "ace/snippets/dockerfile.js", "ace/snippets/jsp.js", "ace/snippets/pgsql.js", "ace/snippets/rust.js", "ace/snippets/xml.js", "ace/snippets/dot.js", "ace/snippets/kotlin.js", "ace/snippets/php.js", "ace/snippets/scala.js", "ace/snippets/yaml.js", "ace/snippets/gitignore.js", "ace/snippets/makefile.js", "ace/snippets/plain_text.js", "ace/snippets/sh.js", "ace/snippets/golang.js", "ace/snippets/markdown.js", "ace/snippets/powershell.js", "ace/snippets/soy_template.js",
+          "ace/theme-chrome.js", "ace/theme-dracula.js", "ace/theme-github.js", "ace/theme-sqlserver.js", "ace/theme-xcode.js", "ace/theme-clouds.js", "ace/theme-eclipse.js", "ace/theme-github_light_default.js", "ace/theme-terminal.js", "ace/theme-dawn.js", "ace/theme-github_dark.js", "ace/theme-one_dark.js", "ace/theme-twilight.js",
+          "ace/worker-base.js", "ace/worker-css.js", "ace/worker-html.js", "ace/worker-json.js", "ace/worker-javascript.js", "ace/worker-php.js", "ace/worker-xml.js", "ace/worker-yaml.js"
+        ],
         "run_at": "document_idle"
       }
     ],
