@@ -2,15 +2,17 @@ let containers = {};
 // Keyboard shortcut: Ctrl + Shift + E
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.shiftKey && e.code === 'KeyU') {
-    let focusedEle = document.activeElement
-    let container = containers[focusedEle];
+    let focusedEle = document.activeElement;
+    let container = containers[focusedEle.parentElement.id];
     if (container) {
       let editor = container.editor;
-      let originalEle = container.originalElement;
-      originalEle.innerHTML = editor.getValue();
-      editor.destroy();
+      let originalEle = document.getElementById(container.originalElement);
+      // console.log("Editor content changed, ", editor.getValue());
+      // originalEle.value = editor.getValue();
+      focusedEle.parentElement.remove();
       originalEle.style.display = 'block';
-    } else if (focusedEle.isContentEditable()) {
+      editor.destroy();
+    } else if (focusedEle.tagName === 'TEXTAREA') {
       activateAceEditor(focusedEle);
     }
   }
@@ -41,6 +43,11 @@ function activateAceEditor(textarea) {
     editorDiv.style.border = '1px solid #ccc';
 
     textarea.style.display = 'none';
+    if(textarea.id === "") {
+      textarea.id = `ace-editor-${Date.now()}`;
+      console.log("Setting ID for textarea:", textarea.id);
+    }
+    editorDiv.id = `ace-editor-${textarea.id}`;
     parent.insertBefore(editorDiv, textarea);
 
     ace.config.set('basePath', chrome.runtime.getURL('ace'));
@@ -61,11 +68,12 @@ function activateAceEditor(textarea) {
       editor.session.addMarker(editor.selection.toOrientedRange(), "ace_selected_word", "text");
       editor.session.on('change', () => {
         textarea.value = editor.getValue();
+        textarea.textContent = textarea.value;
       });
       editor.setValue(value, -1); // -1 to not move cursor
-      containers[editorDiv] = {
+      containers[editorDiv.id] = {
         editor: editor,
-        originalElement: textarea
+        originalElement: textarea.id
       };
     });  
   });
@@ -100,9 +108,14 @@ chrome.runtime.onMessage.addListener(function(message)
     if(message.changeMode !== undefined)
     {
       console.log("Changing mode to:", message.changeMode);
-      let session = ace.createEditSession(editor.getValue(), `ace/mode/${message.changeMode}`);
-      editor.setSession(session);
-      console.log(`Mode changed to:`, editor);
+      let focusedEle = document.activeElement;
+      let container = containers[focusedEle];
+      if (container) {
+        let editor = container.editor;
+        let session = ace.createEditSession(editor.getValue(), `ace/mode/${message.changeMode}`);
+        editor.setSession(session);
+        console.log(`Mode changed to:`, editor);
+      }
     }
     else if(message.changeTheme !== undefined)
     {
