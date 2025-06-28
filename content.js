@@ -104,19 +104,18 @@ chrome.runtime.onMessage.addListener((message) => {
     if (!parent) return;
 
     const container = containers[parent.id];
-    if (!container) return; // No active Ace editor
-
-    const { editor } = container;
-    if (message.changeMode !== undefined) {
-        editor.session.setMode(`ace/mode/${message.changeMode}`);
-    }
-    if (message.changeTheme !== undefined) {
-        editor.setTheme(`ace/theme/${message.changeTheme}`);
-    }
-    if (message.toggleWordWrapping !== undefined) {
-        editor.setWordWrapping(message.toggleWordWrapping);
-    }
-    if (message.ace === "it") {
-        handleAceForActiveElement();
+    if (container){
+      const { editor } = container;
+      if (message.changeMode !== undefined) {
+          editor.session.setMode(`ace/mode/${message.changeMode}`);
+      }
+      if (message.changeTheme !== undefined) {
+          editor.setTheme(`ace/theme/${message.changeTheme}`);
+      }
+      if (message.toggleWordWrapping !== undefined) {
+          editor.setWordWrapping(message.toggleWordWrapping);
+      }
+    } else if (message.ace === "it") {
+      handleAceForActiveElement();
     }
 });
