@@ -1,17 +1,17 @@
-let editor;
+let containers = {};
 // Keyboard shortcut: Ctrl + Shift + E
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.shiftKey && e.code === 'KeyU') {
     let focusedEle = document.activeElement
-    if (focusedEle.tagName === 'TEXTAREA' || focusedEle.tagName === 'DIV') {
-      if (editor) {
-        focusedEle.value = editor.getValue();
-        editor.destroy();
-        editor.container.remove();
-        focusedEle.style.display = 'block';
-      } else {  
-        activateAceEditor(focusedEle);
-      }
+    let container = containers[focusedEle];
+    if (container) {
+      let editor = container.editor;
+      let originalEle = container.originalElement;
+      originalEle.innerHTML = editor.getValue();
+      editor.destroy();
+      originalEle.style.display = 'block';
+    } else if (focusedEle.isContentEditable()) {
+      activateAceEditor(focusedEle);
     }
   }
 });
@@ -31,9 +31,6 @@ function loadAce(callback) {
 }
 
 function activateAceEditor(textarea) {
-  if (textarea.dataset.aceActive) return; // prevent re-initialization
-  console.log("enter activateAceEditor");
-
   loadAce(() => {
     const value = textarea.value;
     const parent = textarea.parentElement;
@@ -60,13 +57,16 @@ function activateAceEditor(textarea) {
           enableLiveAutocompletion: true,
           autoScrollEditorIntoView: true,
       });
-      editor.session.setUseWorker(false); // Disable worker for simplicity
+      editor.session.setUseWorker(true);
       editor.session.addMarker(editor.selection.toOrientedRange(), "ace_selected_word", "text");
       editor.session.on('change', () => {
         textarea.value = editor.getValue();
       });
       editor.setValue(value, -1); // -1 to not move cursor
-      textarea.dataset.aceActive = 'true';
+      containers[editorDiv] = {
+        editor: editor,
+        originalElement: textarea
+      };
     });  
   });
 }
