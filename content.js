@@ -25,7 +25,7 @@ function loadAce(callback) {
     // Load mode and theme
     loadFile('ace/ext-language_tools.js');
     loadFile('ace/ext-inline_autocomplete.js');
-    loadMode('java');
+    loadFile(`ace/mode-javascript.js`);
     loadFile('ace/theme-github.js', callback);
   });
 }
@@ -43,14 +43,12 @@ function activateAceEditor(textarea) {
     textarea.style.display = 'none';
     if(textarea.id === "") {
       textarea.id = `ace-editor-${Date.now()}`;
-      console.log("Setting ID for textarea:", textarea.id);
     }
     editorDiv.id = `ace-editor-${textarea.id}`;
     parent.insertBefore(editorDiv, textarea);
 
     ace.config.set('basePath', chrome.runtime.getURL('ace'));
     ace.require(["ace/ace", "ace/ext/language_tools", "ace/ext/inline_autocomplete"], function(ace) {
-      console.log(ace);
       editor = ace.edit(editorDiv);
       editor.session.setMode("ace/mode/java");
       editor.setTheme("ace/theme/github");
@@ -77,13 +75,6 @@ function activateAceEditor(textarea) {
   });
 }
 
-function loadMode(modeName, callback) {
-  loadFile(`ace/mode-${modeName}.js`, () => {
-    console.log(`Loaded mode: ${modeName}`);
-    loadFile(`ace/snippets/${modeName}.js`, callback);
-  });
-}
-
 function loadFile(filePath, callback) {
   if (filePath) {
     ace.require(["ace/ace"], () => {
@@ -105,13 +96,11 @@ chrome.runtime.onMessage.addListener(function(message)
     var code = "";
     if(message.changeMode !== undefined)
     {
-      console.log("Changing mode to:", message.changeMode);
       let focusedEle = document.activeElement;
       let container = containers[focusedEle.parentElement.id];
       if (container) {
         let editor = container.editor;
         editor.session.setMode(`ace/mode/${message.changeMode}`);
-        console.log(`Mode changed to:`, editor);
       }
     }
     else if(message.changeTheme !== undefined)
