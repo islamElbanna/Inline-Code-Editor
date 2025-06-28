@@ -7,8 +7,6 @@ document.addEventListener('keydown', (e) => {
     if (container) {
       let editor = container.editor;
       let originalEle = document.getElementById(container.originalElement);
-      // console.log("Editor content changed, ", editor.getValue());
-      // originalEle.value = editor.getValue();
       focusedEle.parentElement.remove();
       originalEle.style.display = 'block';
       editor.destroy();
@@ -109,11 +107,10 @@ chrome.runtime.onMessage.addListener(function(message)
     {
       console.log("Changing mode to:", message.changeMode);
       let focusedEle = document.activeElement;
-      let container = containers[focusedEle];
+      let container = containers[focusedEle.parentElement.id];
       if (container) {
         let editor = container.editor;
-        let session = ace.createEditSession(editor.getValue(), `ace/mode/${message.changeMode}`);
-        editor.setSession(session);
+        editor.session.setMode(`ace/mode/${message.changeMode}`);
         console.log(`Mode changed to:`, editor);
       }
     }
