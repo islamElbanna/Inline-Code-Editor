@@ -1,6 +1,6 @@
 # Inline Code Editor Chrome Extension
 
-A lightweight Chrome extension that transforms any `<textarea>` on a webpage into a powerful code editor using the ACE Editor. This extension adds syntax highlighting, language support, and theming capabilities directly in your browser, making it easier to write and edit code on the fly.
+A lightweight Chrome extension that transforms any `<textarea>` on a webpage into a powerful code editor using the [ACE Editor](https://ace.c9.io/). This extension adds syntax highlighting, language support, and theming capabilities directly in your browser, making it easier to write and edit code on the fly.
 
 ---
 
