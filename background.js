@@ -118,7 +118,6 @@ function createAceItContextMenu()
 
     chrome.runtime.onMessage.addListener(function(message, sender)
     {
-        console.log("Received message: ", message);
         if(message.doWhat === "updateState")
         {
             var title = "Ace it!";
@@ -236,7 +235,6 @@ function createPreferencesContextMenu()
 // Add this at the end of the file to handle context menu clicks in MV3
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
     if(info.menuItemId === "aceit") {
-        console.log("Ace it clicked for tab: ", info);
         chrome.tabs.sendMessage(tab.id, {ace: "it"});
     } else if(info.menuItemId === "wordwrapping") {
         chrome.tabs.sendMessage(tab.id, {toggleWordWrapping: true});
