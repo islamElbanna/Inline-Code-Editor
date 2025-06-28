@@ -1,4 +1,4 @@
-let containers = {};
+const containers = {};
 
 // Keyboard shortcut: Ctrl + Shift + U
 document.addEventListener('keydown', (e) => {
@@ -9,13 +9,17 @@ document.addEventListener('keydown', (e) => {
 
 function handleAceForActiveElement() {
     const focusedEle = document.activeElement;
-    const container = containers[focusedEle.parentElement.id];
+    const parent = focusedEle.parentElement;
+    if (!parent) return;
+
+    const container = containers[parent.id];
     if (container) {
-        const editor = container.editor;
-        const originalEle = document.getElementById(container.originalElement);
-        focusedEle.parentElement.remove();
-        originalEle.style.display = 'block';
+        const { editor, originalElement } = container;
+        const originalEle = document.getElementById(originalElement);
+        parent.remove();
+        if (originalEle) originalEle.style.display = 'block';
         editor.destroy();
+        delete containers[parent.id];
     } else if (focusedEle.tagName === 'TEXTAREA') {
         activateAceEditor(focusedEle);
     }
@@ -38,22 +42,27 @@ function activateAceEditor(textarea) {
     loadAce(() => {
         const value = textarea.value;
         const parent = textarea.parentElement;
-        const editorDiv = document.createElement('div');
+        if (!parent) return;
 
-        editorDiv.style.width = textarea.offsetWidth + 'px';
-        editorDiv.style.height = textarea.offsetHeight + 'px';
+        const editorDiv = document.createElement('div');
+        editorDiv.style.width = `${textarea.offsetWidth}px`;
+        editorDiv.style.height = `${textarea.offsetHeight}px`;
         editorDiv.style.border = '1px solid #ccc';
 
         textarea.style.display = 'none';
-        if (textarea.id === "") {
+        if (!textarea.id) {
             textarea.id = `ace-editor-${Date.now()}`;
         }
         editorDiv.id = `ace-editor-${textarea.id}`;
         parent.insertBefore(editorDiv, textarea);
 
         ace.config.set('basePath', chrome.runtime.getURL('ace'));
-        ace.require(["ace/ace", "ace/ext/language_tools", "ace/ext/inline_autocomplete"], function (ace) {
-            const editor = ace.edit(editorDiv);
+        ace.require([
+            "ace/ace",
+            "ace/ext/language_tools",
+            "ace/ext/inline_autocomplete"
+        ], function (aceInstance) {
+            const editor = aceInstance.edit(editorDiv);
             editor.session.setMode("ace/mode/javascript");
             editor.setTheme("ace/theme/github");
             editor.setOptions({
@@ -71,7 +80,7 @@ function activateAceEditor(textarea) {
             });
             editor.setValue(value, -1); // -1 to not move cursor
             containers[editorDiv.id] = {
-                editor: editor,
+                editor,
                 originalElement: textarea.id
             };
         });
@@ -79,35 +88,35 @@ function activateAceEditor(textarea) {
 }
 
 function loadFile(filePath, callback) {
-    if (filePath) {
-        ace.require(["ace/ace"], () => {
-            const script = document.createElement('script');
-            script.src = chrome.runtime.getURL(filePath);
-            script.onload = () => {
-                if (callback) {
-                    callback();
-                }
-            };
-            document.head.appendChild(script);
-        });
-    }
+    if (!filePath) return;
+    ace.require(["ace/ace"], () => {
+        const script = document.createElement('script');
+        script.src = chrome.runtime.getURL(filePath);
+        script.onload = () => callback && callback();
+        document.head.appendChild(script);
+    });
 }
 
 // The context menu was clicked
-chrome.runtime.onMessage.addListener(function (message) {
+chrome.runtime.onMessage.addListener((message) => {
     const focusedEle = document.activeElement;
-    const container = containers[focusedEle.parentElement.id];
-    if (!container) {
-        return; // No active Ace editor
-    }
-    const editor = container.editor;
+    const parent = focusedEle.parentElement;
+    if (!parent) return;
+
+    const container = containers[parent.id];
+    if (!container) return; // No active Ace editor
+
+    const { editor } = container;
     if (message.changeMode !== undefined) {
         editor.session.setMode(`ace/mode/${message.changeMode}`);
-    } else if (message.changeTheme !== undefined) {
+    }
+    if (message.changeTheme !== undefined) {
         editor.setTheme(`ace/theme/${message.changeTheme}`);
-    } else if (message.toggleWordWrapping !== undefined) {
+    }
+    if (message.toggleWordWrapping !== undefined) {
         editor.setWordWrapping(message.toggleWordWrapping);
-    } else if (message.ace === "it") {
+    }
+    if (message.ace === "it") {
         handleAceForActiveElement();
     }
 });

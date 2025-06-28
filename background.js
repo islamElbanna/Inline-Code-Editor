@@ -25,33 +25,25 @@ let aceItcontextMenuID = null;
 const aceModesFirstLetterContextmenuIDs = {};
 let fieldID = "";
 
-createAceItContextMenu();
-createModesContextMenu();
-createThemesContextMenu();
+init();
+
+function init() {
+    createAceItContextMenu();
+    createModesContextMenu();
+    createThemesContextMenu();
+}
 
 function aceIt(tabID, fieldID) {
-    let language = defaultLanguage;
-    let theme = defaultTheme;
-    let wordWrapping = defaultWordWrapping;
-
-    chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], function (items) {
-        if (items.lastUsedLanguage !== undefined) {
-            language = items.lastUsedLanguage;
-        }
-
-        if (items.lastUsedTheme !== undefined) {
-            theme = items.lastUsedTheme;
-        }
-
-        if (items.wordWrapping !== undefined) {
-            wordWrapping = items.wordWrapping;
-        }
+    chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], (items) => {
+        const language = items.lastUsedLanguage ?? defaultLanguage;
+        const theme = items.lastUsedTheme ?? defaultTheme;
+        const wordWrapping = items.wordWrapping ?? defaultWordWrapping;
 
         sendMessage(tabID, {
             ace: "it",
-            language: language,
-            theme: theme,
-            wordWrapping: wordWrapping,
+            language,
+            theme,
+            wordWrapping,
             elementID: fieldID
         });
     });
@@ -72,41 +64,30 @@ function changeTheme(tabID, themeName) {
 }
 
 function toggleWordWrapping(tabID) {
-    let currentValue = defaultWordWrapping;
-    chrome.storage.local.get("wordWrapping", function (items) {
-        if (items.wordWrapping !== undefined) {
-            currentValue = items.wordWrapping;
-        }
-
+    chrome.storage.local.get("wordWrapping", (items) => {
+        const currentValue = items.wordWrapping ?? defaultWordWrapping;
         const wordWrapping = !currentValue;
-        chrome.storage.local.set({ wordWrapping: wordWrapping });
+        chrome.storage.local.set({ wordWrapping });
         sendMessage(tabID, { toggleWordWrapping: wordWrapping });
     });
 }
 
 function toggleAutoLoad(url) {
-    isFieldAutoLoaded(url, function (result, items) {
-        let obj = {};
-        if (items["autoLoadingFields"] !== undefined) {
-            obj = items["autoLoadingFields"];
-        }
-
-        obj[url] = fieldID;
-        if (result !== false) {
-            obj[url] = false;
-        }
+    isFieldAutoLoaded(url, (result, items) => {
+        const obj = items["autoLoadingFields"] ?? {};
+        obj[url] = result !== false ? false : fieldID;
         chrome.storage.local.set({ autoLoadingFields: obj });
     });
 }
 
 function isFieldAutoLoaded(url, callback) {
-    chrome.storage.local.get("autoLoadingFields", function (items) {
-        callback(
-            items["autoLoadingFields"] !== undefined &&
+    chrome.storage.local.get("autoLoadingFields", (items) => {
+        const loaded = !!(
+            items["autoLoadingFields"] &&
             items["autoLoadingFields"][url] !== undefined &&
-            items["autoLoadingFields"][url] !== false,
-            items
+            items["autoLoadingFields"][url] !== false
         );
+        callback(loaded, items);
     });
 }
 
@@ -117,23 +98,20 @@ function createAceItContextMenu() {
         contexts: ["editable"]
     });
 
-    chrome.runtime.onMessage.addListener(function (message, sender) {
+    chrome.runtime.onMessage.addListener((message, sender) => {
         if (message.doWhat === "updateState") {
             let title = "Ace it!";
             if (message.type === "cpanel") {
                 title = "Ace it! (cPanel detected)";
             }
 
-            fieldID = message.elementID;
-            if (fieldID === "") {
-                fieldID = "_aceAnywhereOrigin";
-            }
+            fieldID = message.elementID || "_aceAnywhereOrigin";
 
-            isFieldAutoLoaded(message.url.href, function (result) {
+            isFieldAutoLoaded(message.url.href, (result) => {
                 chrome.contextMenus.update("autoload", { checked: result });
             });
 
-            chrome.contextMenus.update(aceItcontextMenuID, { title: title });
+            chrome.contextMenus.update(aceItcontextMenuID, { title });
         } else if (message.doWhat === "aceIt") {
             aceIt(sender.tab.id, message.elementID);
         }
@@ -147,11 +125,10 @@ function createModesContextMenu() {
         contexts: ["editable"]
     });
 
-    for (let i = 0; i < aceModes.length; i++) {
-        const language = aceModes[i];
+    aceModes.forEach((language) => {
         const firstLetter = language[0];
         let parentContextMenuID = aceModesFirstLetterContextmenuIDs[firstLetter];
-        if (parentContextMenuID === undefined) {
+        if (!parentContextMenuID) {
             parentContextMenuID = chrome.contextMenus.create({
                 id: "first_letter_" + firstLetter,
                 title: firstLetter.toUpperCase(),
@@ -166,7 +143,7 @@ function createModesContextMenu() {
             contexts: ["editable"],
             parentId: parentContextMenuID
         });
-    }
+    });
 }
 
 function createThemesContextMenu() {
@@ -175,9 +152,8 @@ function createThemesContextMenu() {
         title: "Themes",
         contexts: ["editable"]
     });
-    chrome.storage.local.get("lastUsedTheme", function () {
-        for (let i = 0; i < aceThemes.length; i++) {
-            const themeName = aceThemes[i];
+    chrome.storage.local.get("lastUsedTheme", () => {
+        aceThemes.forEach((themeName) => {
             chrome.contextMenus.create({
                 id: themeName,
                 title: themeName,
@@ -185,12 +161,12 @@ function createThemesContextMenu() {
                 contexts: ["editable"],
                 parentId: "acethemes"
             });
-        }
+        });
     });
 }
 
 // Handle context menu clicks in MV3
-chrome.contextMenus.onClicked.addListener(function (info, tab) {
+chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "aceit") {
         chrome.tabs.sendMessage(tab.id, { ace: "it" });
     } else if (info.menuItemId === "wordwrapping") {
