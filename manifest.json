@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Inline Code Editor",
     "version": "1.0",
-    "description": "Turn a focused element into an ACE Editor.",
+    "description": "Turn a focused element into an Editor.",
     "permissions": ["storage", "contextMenus", "scripting"],
     "host_permissions": ["<all_urls>"],
     "background": {
