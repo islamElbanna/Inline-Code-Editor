@@ -25,4 +25,16 @@ A lightweight Chrome extension that transforms any `<textarea>` on a webpage int
 
 ## 🔌 How It Works
 
-Upon loading a webpage, the extension scans for all `<textarea>` elements and replaces them with ACE Editor widgets. It retains the functionality and form integration of the original textareas.
+Upon loading a webpage, and focus on a `<textarea>` element, then to toggle the editor either:
+- Use the short cut `Ctrl` + `Shift` + `U` keys.
+- Right click on the element and choose `Edit it`.
+
+---
+
+## 🤝 Contribution
+We welcome contributions! To contribute:
+
+- [Open an issue](https://github.com/islamElbanna/Inline-Code-Editor/issues) describing your suggestion or bug.
+- Fork the repository and create a new branch for your feature or fix.
+- Submit a pull request referencing the issue number.
+- Please follow best practices and ensure your code is well-documented.
