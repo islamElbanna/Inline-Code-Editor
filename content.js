@@ -1,14 +1,18 @@
 const containers = {};
+const defaultLanguage = "javascript";
+const defaultTheme = "github";
+const defaultWordWrapping = false;
 
 // Keyboard shortcut: Ctrl + Shift + U
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.code === 'KeyU') {
-        handleAceForActiveElement();
+        handleEditorForActiveElement();
     }
 });
 
-function handleAceForActiveElement() {
+function handleEditorForActiveElement() {
     const focusedEle = document.activeElement;
+    if (!focusedEle) return;
     const parent = focusedEle.parentElement;
     if (!parent) return;
 
@@ -21,25 +25,24 @@ function handleAceForActiveElement() {
         editor.destroy();
         delete containers[parent.id];
     } else if (focusedEle.tagName === 'TEXTAREA') {
-        activateAceEditor(focusedEle);
+        activateEditor(focusedEle);
     }
 }
 
-function loadAce(callback) {
-    if (window.ace) {
+function loadEditor(callback) {
+    if (window.editor) {
         callback();
         return;
     }
     loadFile('ace/ace.js', () => {
         loadFile('ace/ext-language_tools.js');
         loadFile('ace/ext-inline_autocomplete.js');
-        loadFile('ace/mode-javascript.js');
-        loadFile('ace/theme-github.js', callback);
+        window.editor = true;
     });
 }
 
-function activateAceEditor(textarea) {
-    loadAce(() => {
+function activateEditor(textarea) {
+    loadEditor(() => {
         const value = textarea.value;
         const parent = textarea.parentElement;
         if (!parent) return;
@@ -62,27 +65,33 @@ function activateAceEditor(textarea) {
             "ace/ext/language_tools",
             "ace/ext/inline_autocomplete"
         ], function (aceInstance) {
-            const editor = aceInstance.edit(editorDiv);
-            editor.session.setMode("ace/mode/javascript");
-            editor.setTheme("ace/theme/github");
-            editor.setOptions({
-                enableBasicAutocompletion: true,
-                enableInlineAutocompletion: true,
-                enableSnippets: true,
-                enableLiveAutocompletion: true,
-                autoScrollEditorIntoView: true,
+            chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], function(items) {
+                const language = items.lastUsedLanguage !== undefined ? items.lastUsedLanguage : defaultLanguage; 
+                const theme = items.lastUsedTheme !== undefined ? items.lastUsedTheme : defaultTheme;
+                const wordWrapping = items.wordWrapping !== undefined ? items.wordWrapping : defaultWordWrapping;
+                const editor = aceInstance.edit(editorDiv);
+                editor.session.setMode("ace/mode/" + language);
+                editor.setTheme("ace/theme/" + theme);
+                editor.setOptions({
+                    enableBasicAutocompletion: true,
+                    enableInlineAutocompletion: true,
+                    enableSnippets: true,
+                    enableLiveAutocompletion: true,
+                    autoScrollEditorIntoView: true,
+                });
+                editor.session.setUseWorker(true);
+                editor.session.setUseWrapMode(wordWrapping);
+                editor.session.addMarker(editor.selection.toOrientedRange(), "ace_selected_word", "text");
+                editor.session.on('change', () => {
+                    textarea.value = editor.getValue();
+                    textarea.textContent = textarea.value;
+                });
+                editor.setValue(value, -1); // -1 to not move cursor
+                containers[editorDiv.id] = {
+                    editor,
+                    originalElement: textarea.id
+                };
             });
-            editor.session.setUseWorker(true);
-            editor.session.addMarker(editor.selection.toOrientedRange(), "ace_selected_word", "text");
-            editor.session.on('change', () => {
-                textarea.value = editor.getValue();
-                textarea.textContent = textarea.value;
-            });
-            editor.setValue(value, -1); // -1 to not move cursor
-            containers[editorDiv.id] = {
-                editor,
-                originalElement: textarea.id
-            };
         });
     });
 }
@@ -115,7 +124,33 @@ chrome.runtime.onMessage.addListener((message) => {
       if (message.toggleWordWrapping !== undefined) {
           editor.setWordWrapping(message.toggleWordWrapping);
       }
-    } else if (message.ace === "it") {
-      handleAceForActiveElement();
+    } else if (message.edit === "it") {
+      handleEditorForActiveElement();
+    } else if (message.autoloadCurrentElement) {
+        const url = window.location.href;
+        chrome.storage.local.get("autoLoadingFields", function (items) {
+            const autoLoadingFields = items["autoLoadingFields"] || {};
+            if (autoLoadingFields[url] !== undefined && autoLoadingFields[url] !== false) {
+                const fieldID = autoLoadingFields[url];
+                if (document.getElementById(fieldID)) {
+                    activateEditor(document.getElementById(fieldID));
+                } else {
+                    console.warn(`Element with ID ${fieldID} not found in the document.`);
+                    delete autoLoadingFields[url];
+                    chrome.storage.local.set({ "autoLoadingFields": autoLoadingFields });
+                }
+            }
+        });
+    }
+});
+
+
+//Autoload Editor for the saved URLs
+chrome.storage.local.get("autoLoadingFields", function (items) {
+    if (items["autoLoadingFields"] !== undefined) {
+        var fieldID = items["autoLoadingFields"][window.location.href];
+        if (fieldID !== undefined && fieldID !== false) {
+            //TODO
+        }
     }
 });

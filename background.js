@@ -17,34 +17,34 @@ const aceThemes = [
     "chrome", "dracula", "github", "sqlserver", "xcode", "clouds", "eclipse", "github_light_default", "terminal",
     "dawn", "github_dark", "one_dark", "twilight"
 ];
-const defaultLanguage = "java";
+const defaultLanguage = "javascript";
 const defaultTheme = "github";
 const defaultWordWrapping = false;
 
-let aceItcontextMenuID = null;
+let editItcontextMenuID = null;
 const aceModesFirstLetterContextmenuIDs = {};
 let fieldID = "";
 
 init();
 
 function init() {
-    createAceItContextMenu();
+    createEditItContextMenu();
     createModesContextMenu();
     createThemesContextMenu();
+    createPreferencesContextMenu();
 }
 
-function aceIt(tabID, fieldID) {
+function editIt(tabID) {
     chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], (items) => {
         const language = items.lastUsedLanguage ?? defaultLanguage;
         const theme = items.lastUsedTheme ?? defaultTheme;
         const wordWrapping = items.wordWrapping ?? defaultWordWrapping;
 
         sendMessage(tabID, {
-            ace: "it",
+            edit: "it",
             language,
             theme,
-            wordWrapping,
-            elementID: fieldID
+            wordWrapping
         });
     });
 }
@@ -91,30 +91,11 @@ function isFieldAutoLoaded(url, callback) {
     });
 }
 
-function createAceItContextMenu() {
-    aceItcontextMenuID = chrome.contextMenus.create({
-        id: "aceit",
-        title: "Ace it!",
+function createEditItContextMenu() {
+    editItcontextMenuID = chrome.contextMenus.create({
+        id: "editit",
+        title: "Edit it!",
         contexts: ["editable"]
-    });
-
-    chrome.runtime.onMessage.addListener((message, sender) => {
-        if (message.doWhat === "updateState") {
-            let title = "Ace it!";
-            if (message.type === "cpanel") {
-                title = "Ace it! (cPanel detected)";
-            }
-
-            fieldID = message.elementID || "_aceAnywhereOrigin";
-
-            isFieldAutoLoaded(message.url.href, (result) => {
-                chrome.contextMenus.update("autoload", { checked: result });
-            });
-
-            chrome.contextMenus.update(aceItcontextMenuID, { title });
-        } else if (message.doWhat === "aceIt") {
-            aceIt(sender.tab.id, message.elementID);
-        }
     });
 }
 
@@ -165,10 +146,43 @@ function createThemesContextMenu() {
     });
 }
 
+function createPreferencesContextMenu() {
+    chrome.contextMenus.create(
+        {
+            id: "preferences",
+            title: "Preferences",
+            contexts: ["editable"],
+        });
+
+    chrome.contextMenus.create(
+        {
+            id: "wordwrapping",
+            title: "Toggle Word Wrapping",
+            contexts: ["editable"],
+            parentId: "preferences",
+            onclick: function (info, tab) {
+                toggleWordWrapping(tab.id);
+            }
+        });
+
+    chrome.contextMenus.create(
+        {
+            id: "autoload",
+            title: "Auto load Editor on this Element",
+            contexts: ["editable"],
+            parentId: "preferences",
+            type: "checkbox",
+            onclick: function (info, tab) {
+                chrome.tabs.sendMessage(tab.id, { url: tab.url, autoloadCurrentElement: true });
+            }
+        });
+
+}
+
 // Handle context menu clicks in MV3
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "aceit") {
-        chrome.tabs.sendMessage(tab.id, { ace: "it" });
+    if (info.menuItemId === "editit") {
+        editIt(tab.id);
     } else if (info.menuItemId === "wordwrapping") {
         chrome.tabs.sendMessage(tab.id, { toggleWordWrapping: true });
     } else if (info.menuItemId === "acemodes" || info.menuItemId.startsWith("first_letter_")) {
