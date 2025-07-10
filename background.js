@@ -23,7 +23,6 @@ const defaultWordWrapping = false;
 
 let editItcontextMenuID = null;
 const aceModesFirstLetterContextmenuIDs = {};
-let fieldID = "";
 
 init();
 
@@ -86,25 +85,6 @@ function toggleWordWrapping(tabID) {
         const wordWrapping = !currentValue;
         chrome.storage.local.set({ wordWrapping });
         sendMessage(tabID, { toggleWordWrapping: wordWrapping });
-    });
-}
-
-function toggleAutoLoad(url) {
-    isFieldAutoLoaded(url, (result, items) => {
-        const obj = items["autoLoadingFields"] ?? {};
-        obj[url] = result !== false ? false : fieldID;
-        chrome.storage.local.set({ autoLoadingFields: obj });
-    });
-}
-
-function isFieldAutoLoaded(url, callback) {
-    chrome.storage.local.get("autoLoadingFields", (items) => {
-        const loaded = !!(
-            items["autoLoadingFields"] &&
-            items["autoLoadingFields"][url] !== undefined &&
-            items["autoLoadingFields"][url] !== false
-        );
-        callback(loaded, items);
     });
 }
 
