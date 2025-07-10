@@ -128,18 +128,24 @@ chrome.runtime.onMessage.addListener((message) => {
       handleEditorForActiveElement();
     } else if (message.autoloadCurrentElement) {
         const url = window.location.href;
+        const focusedEle = document.activeElement;
+        if (!focusedEle) return;
+        const parent = focusedEle.parentElement;
+        if (!parent) return;
+
+        const container = containers[parent.id];
+        const fieldID = focusedEle.id
+        if (container) {
+            // If the editor is already active, save the ID of the parent element
+            fieldID = parent.id
+        } else {
+            activateEditor(focusedEle);
+        }
+        if (fieldID === undefined || fieldID === false) return;
         chrome.storage.local.get("autoLoadingFields", function (items) {
             const autoLoadingFields = items["autoLoadingFields"] || {};
-            if (autoLoadingFields[url] !== undefined && autoLoadingFields[url] !== false) {
-                const fieldID = autoLoadingFields[url];
-                if (document.getElementById(fieldID)) {
-                    activateEditor(document.getElementById(fieldID));
-                } else {
-                    console.warn(`Element with ID ${fieldID} not found in the document.`);
-                    delete autoLoadingFields[url];
-                    chrome.storage.local.set({ "autoLoadingFields": autoLoadingFields });
-                }
-            }
+            autoLoadingFields[url] = fieldID;
+            chrome.storage.local.set({ "autoLoadingFields": autoLoadingFields });
         });
     }
 });
