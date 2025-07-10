@@ -14,7 +14,7 @@ const aceModes = [
     "powershell", "soy_template"
 ];
 const aceThemes = [
-    "chrome", "dracula", "github", "sqlserver", "xcode", "clouds", "eclipse", "github_light_default", "terminal",
+    "chrome", "dracula", "github", "xcode", "clouds", "eclipse", "github_light_default", "terminal",
     "dawn", "github_dark", "one_dark", "twilight"
 ];
 const defaultLanguage = "javascript";
@@ -32,6 +32,23 @@ function init() {
     createModesContextMenu();
     createThemesContextMenu();
     createPreferencesContextMenu();
+
+    // Handle context menu clicks in MV3
+    chrome.contextMenus.onClicked.addListener((info, tab) => {
+        if (info.menuItemId === "editit") {
+            editIt(tab.id);
+        } else if (info.menuItemId === "wordwrapping") {
+            toggleWordWrapping(tab.id);
+        } else if (info.menuItemId === "autoload") {
+            chrome.tabs.sendMessage(tab.id, { url: tab.url, autoloadCurrentElement: true });
+        } else if (info.menuItemId === "acemodes" || info.menuItemId.startsWith("first_letter_")) {
+            // Do nothing for parent menu
+        } else if (aceModes.includes(info.menuItemId)) {
+            chrome.tabs.sendMessage(tab.id, { changeMode: info.menuItemId });
+        } else if (aceThemes.includes(info.menuItemId)) {
+            chrome.tabs.sendMessage(tab.id, { changeTheme: info.menuItemId });
+        }
+    });
 }
 
 function editIt(tabID) {
@@ -106,23 +123,27 @@ function createModesContextMenu() {
         contexts: ["editable"]
     });
 
-    aceModes.forEach((language) => {
-        const firstLetter = language[0];
-        let parentContextMenuID = aceModesFirstLetterContextmenuIDs[firstLetter];
-        if (!parentContextMenuID) {
-            parentContextMenuID = chrome.contextMenus.create({
-                id: "first_letter_" + firstLetter,
-                title: firstLetter.toUpperCase(),
+    chrome.storage.local.get("lastUsedLanguage", (items) => {
+        aceModes.forEach((language) => {
+            const firstLetter = language[0];
+            let parentContextMenuID = aceModesFirstLetterContextmenuIDs[firstLetter];
+            if (!parentContextMenuID) {
+                parentContextMenuID = chrome.contextMenus.create({
+                    id: "first_letter_" + firstLetter,
+                    title: firstLetter.toUpperCase(),
+                    contexts: ["editable"],
+                    checked: items.lastUsedLanguage && items.lastUsedLanguage.startsWith(firstLetter),
+                    parentId: "acemodes"
+                });
+                aceModesFirstLetterContextmenuIDs[firstLetter] = parentContextMenuID;
+            }
+            chrome.contextMenus.create({
+                id: language,
+                title: language,
                 contexts: ["editable"],
-                parentId: "acemodes"
+                checked: items.lastUsedLanguage === language,
+                parentId: parentContextMenuID
             });
-            aceModesFirstLetterContextmenuIDs[firstLetter] = parentContextMenuID;
-        }
-        chrome.contextMenus.create({
-            id: language,
-            title: language,
-            contexts: ["editable"],
-            parentId: parentContextMenuID
         });
     });
 }
@@ -133,12 +154,12 @@ function createThemesContextMenu() {
         title: "Themes",
         contexts: ["editable"]
     });
-    chrome.storage.local.get("lastUsedTheme", () => {
+    chrome.storage.local.get("lastUsedTheme", (items) => {
         aceThemes.forEach((themeName) => {
             chrome.contextMenus.create({
                 id: themeName,
                 title: themeName,
-                checked: false,
+                checked: items.lastUsedTheme === themeName,
                 contexts: ["editable"],
                 parentId: "acethemes"
             });
@@ -147,49 +168,24 @@ function createThemesContextMenu() {
 }
 
 function createPreferencesContextMenu() {
-    chrome.contextMenus.create(
-        {
-            id: "preferences",
-            title: "Preferences",
-            contexts: ["editable"],
-        });
+    chrome.contextMenus.create({
+        id: "preferences",
+        title: "Preferences",
+        contexts: ["editable"],
+    });
 
-    chrome.contextMenus.create(
-        {
-            id: "wordwrapping",
-            title: "Toggle Word Wrapping",
-            contexts: ["editable"],
-            parentId: "preferences",
-            onclick: function (info, tab) {
-                toggleWordWrapping(tab.id);
-            }
-        });
+    chrome.contextMenus.create({
+        id: "wordwrapping",
+        title: "Toggle Word Wrapping",
+        contexts: ["editable"],
+        parentId: "preferences"
+    });
 
-    chrome.contextMenus.create(
-        {
-            id: "autoload",
-            title: "Auto load Editor on this Element",
-            contexts: ["editable"],
-            parentId: "preferences",
-            type: "checkbox",
-            onclick: function (info, tab) {
-                chrome.tabs.sendMessage(tab.id, { url: tab.url, autoloadCurrentElement: true });
-            }
-        });
-
+    chrome.contextMenus.create({
+        id: "autoload",
+        title: "Auto load Editor on this Element",
+        contexts: ["editable"],
+        parentId: "preferences",
+        type: "checkbox",
+    });         
 }
-
-// Handle context menu clicks in MV3
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "editit") {
-        editIt(tab.id);
-    } else if (info.menuItemId === "wordwrapping") {
-        chrome.tabs.sendMessage(tab.id, { toggleWordWrapping: true });
-    } else if (info.menuItemId === "acemodes" || info.menuItemId.startsWith("first_letter_")) {
-        // Do nothing for parent menu
-    } else if (aceModes.includes(info.menuItemId)) {
-        chrome.tabs.sendMessage(tab.id, { changeMode: info.menuItemId });
-    } else if (aceThemes.includes(info.menuItemId)) {
-        chrome.tabs.sendMessage(tab.id, { changeTheme: info.menuItemId });
-    }
-});
