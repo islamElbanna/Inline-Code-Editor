@@ -150,7 +150,14 @@ chrome.storage.local.get("autoLoadingFields", function (items) {
     if (items["autoLoadingFields"] !== undefined) {
         var fieldID = items["autoLoadingFields"][window.location.href];
         if (fieldID !== undefined && fieldID !== false) {
-            //TODO
+            const element = document.getElementById(fieldID);
+            if (element) {
+                activateEditor(element);
+            } else {
+                console.warn(`Element with ID ${fieldID} not found in the document.`);
+                delete items["autoLoadingFields"][window.location.href];
+                chrome.storage.local.set({ "autoLoadingFields": items });
+            }
         }
     }
 });
