@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Inline Code Editor",
-    "version": "0.01",
+    "version": "0.02",
     "description": "Turn a focused element into an Editor.",
     "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
     "background": {
