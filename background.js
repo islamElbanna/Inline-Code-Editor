@@ -24,31 +24,29 @@ const defaultWordWrapping = false;
 let editItcontextMenuID = null;
 const aceModesFirstLetterContextmenuIDs = {};
 
-init();
-
-function init() {
+chrome.runtime.onInstalled.addListener(async () => {
     createEditItContextMenu();
     createModesContextMenu();
     createThemesContextMenu();
     createPreferencesContextMenu();
+});
 
-    // Handle context menu clicks in MV3
-    chrome.contextMenus.onClicked.addListener((info, tab) => {
-        if (info.menuItemId === "editit") {
-            editIt(tab.id);
-        } else if (info.menuItemId === "wordwrapping") {
-            toggleWordWrapping(tab.id);
-        } else if (info.menuItemId === "autoload") {
-            chrome.tabs.sendMessage(tab.id, { url: tab.url, autoloadCurrentElement: true });
-        } else if (info.menuItemId === "acemodes" || info.menuItemId.startsWith("first_letter_")) {
-            // Do nothing for parent menu
-        } else if (aceModes.includes(info.menuItemId)) {
-            chrome.tabs.sendMessage(tab.id, { changeMode: info.menuItemId });
-        } else if (aceThemes.includes(info.menuItemId)) {
-            chrome.tabs.sendMessage(tab.id, { changeTheme: info.menuItemId });
-        }
-    });
-}
+// Handle context menu clicks in MV3
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === "editit") {
+        editIt(tab.id);
+    } else if (info.menuItemId === "wordwrapping") {
+        toggleWordWrapping(tab.id);
+    } else if (info.menuItemId === "autoload") {
+        chrome.tabs.sendMessage(tab.id, { url: tab.url, autoloadCurrentElement: true });
+    } else if (info.menuItemId === "acemodes" || info.menuItemId.startsWith("first_letter_")) {
+        // Do nothing for parent menu
+    } else if (aceModes.includes(info.menuItemId)) {
+        chrome.tabs.sendMessage(tab.id, { changeMode: info.menuItemId });
+    } else if (aceThemes.includes(info.menuItemId)) {
+        chrome.tabs.sendMessage(tab.id, { changeTheme: info.menuItemId });
+    }
+});
 
 function editIt(tabID) {
     chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], (items) => {
@@ -166,6 +164,6 @@ function createPreferencesContextMenu() {
         title: "Auto load Editor on this Element",
         contexts: ["editable"],
         parentId: "preferences",
-        type: "checkbox",
-    });         
+        type: "checkbox"
+    });
 }

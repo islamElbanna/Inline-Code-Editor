@@ -1,3 +1,7 @@
+const AUTO_LOADING_FIELDS_KEY = "autoLoadingFields";
+const LAST_USED_LANGUAGE_KEY = "lastUsedLanguage";
+const LAST_USED_THEME_KEY = "lastUsedTheme";
+const WORD_WRAPPING_KEY = "wordWrapping";
 const containers = {};
 const defaultLanguage = "javascript";
 const defaultTheme = "github";
@@ -38,6 +42,7 @@ function loadEditor(callback) {
         loadFile('ace/ext-language_tools.js');
         loadFile('ace/ext-inline_autocomplete.js');
         window.editor = true;
+        callback();
     });
 }
 
@@ -65,10 +70,10 @@ function activateEditor(textarea) {
             "ace/ext/language_tools",
             "ace/ext/inline_autocomplete"
         ], function (aceInstance) {
-            chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], function(items) {
-                const language = items.lastUsedLanguage !== undefined ? items.lastUsedLanguage : defaultLanguage; 
-                const theme = items.lastUsedTheme !== undefined ? items.lastUsedTheme : defaultTheme;
-                const wordWrapping = items.wordWrapping !== undefined ? items.wordWrapping : defaultWordWrapping;
+            chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], function(items) {
+                const language = items[LAST_USED_LANGUAGE_KEY] !== undefined ? items[LAST_USED_LANGUAGE_KEY] : defaultLanguage; 
+                const theme = items[LAST_USED_THEME_KEY] !== undefined ? items[LAST_USED_THEME_KEY] : defaultTheme;
+                const wordWrapping = items[WORD_WRAPPING_KEY] !== undefined ? items[WORD_WRAPPING_KEY] : defaultWordWrapping;
                 const editor = aceInstance.edit(editorDiv);
                 editor.session.setMode("ace/mode/" + language);
                 editor.setTheme("ace/theme/" + theme);
@@ -110,59 +115,65 @@ function loadFile(filePath, callback) {
 chrome.runtime.onMessage.addListener((message) => {
     const focusedEle = document.activeElement;
     const parent = focusedEle.parentElement;
-    if (!parent) return;
-
-    const container = containers[parent.id];
-    if (container){
-      const { editor } = container;
-      if (message.changeMode !== undefined) {
-          editor.session.setMode(`ace/mode/${message.changeMode}`);
-      }
-      if (message.changeTheme !== undefined) {
-          editor.setTheme(`ace/theme/${message.changeTheme}`);
-      }
-      if (message.toggleWordWrapping !== undefined) {
-          editor.setWordWrapping(message.toggleWordWrapping);
-      }
-    } else if (message.edit === "it") {
-      handleEditorForActiveElement();
-    } else if (message.autoloadCurrentElement) {
+    if (message.autoloadCurrentElement !== undefined) {
+        // Save the current element for autoloading
+        console.log("Autoloading current element");
         const url = window.location.href;
-        const focusedEle = document.activeElement;
-        if (!focusedEle) return;
-        const parent = focusedEle.parentElement;
-        if (!parent) return;
-
-        const container = containers[parent.id];
-        const fieldID = focusedEle.id
-        if (container) {
-            // If the editor is already active, save the ID of the parent element
-            fieldID = parent.id
-        } else {
-            activateEditor(focusedEle);
+        let fieldID = focusedEle.id;
+        if (parent) {
+            const container = containers[parent.id];
+            if (container) {
+                // If the editor is already active, save the ID of the original element
+                fieldID = container.originalElement;
+            }
         }
-        if (fieldID === undefined || fieldID === false) return;
-        chrome.storage.local.get("autoLoadingFields", function (items) {
-            const autoLoadingFields = items["autoLoadingFields"] || {};
-            autoLoadingFields[url] = fieldID;
-            chrome.storage.local.set({ "autoLoadingFields": autoLoadingFields });
+        if (fieldID === undefined || fieldID === false) return; 
+        
+        chrome.storage.local.get(AUTO_LOADING_FIELDS_KEY, function (items) {
+            const autoLoadingFields = items[AUTO_LOADING_FIELDS_KEY] || {};
+            autoLoadingFields[url] = autoLoadingFields[url] === fieldID ? false : fieldID; // Toggle the field ID
+            console.log("Saving current element to autoLoadingFields:", autoLoadingFields);
+            chrome.storage.local.set({ [AUTO_LOADING_FIELDS_KEY]: autoLoadingFields });
         });
+    } else if (message.edit === "it") {
+        handleEditorForActiveElement();
+    } else {
+        const container = containers[parent.id];
+        if (container){
+        const { editor } = container;
+        if (message.changeMode !== undefined) {
+            editor.session.setMode(`ace/mode/${message.changeMode}`);
+            chrome.storage.local.set({[LAST_USED_LANGUAGE_KEY]: message.changeMode});
+            console.log("Saved changeMode as: ", message.changeMode);
+        } else if (message.changeTheme !== undefined) {
+            editor.setTheme(`ace/theme/${message.changeTheme}`);
+            chrome.storage.local.set({[LAST_USED_THEME_KEY]: message.changeTheme});
+            console.log("Saved changeTheme as: ", message.changeTheme);
+        } else if (message.toggleWordWrapping !== undefined) {
+            editor.setWordWrapping(message.toggleWordWrapping);
+            chrome.storage.local.set({[WORD_WRAPPING_KEY]: message.toggleWordWrapping});
+            console.log("Saved toggleWordWrapping as: ", message.toggleWordWrapping);
+        }
+        } 
     }
 });
 
 
 //Autoload Editor for the saved URLs
-chrome.storage.local.get("autoLoadingFields", function (items) {
-    if (items["autoLoadingFields"] !== undefined) {
-        var fieldID = items["autoLoadingFields"][window.location.href];
+chrome.storage.local.get(AUTO_LOADING_FIELDS_KEY, function (items) {
+    console.log("Checking for auto-loading fields:", items[AUTO_LOADING_FIELDS_KEY]);
+    if (items[AUTO_LOADING_FIELDS_KEY] !== undefined) {
+        var fieldID = items[AUTO_LOADING_FIELDS_KEY][window.location.href];
         if (fieldID !== undefined && fieldID !== false) {
+            console.log("Autoloading field with ID:", fieldID);
             const element = document.getElementById(fieldID);
             if (element) {
+                console.log("Found element with ID:", fieldID);
                 activateEditor(element);
             } else {
                 console.warn(`Element with ID ${fieldID} not found in the document.`);
-                delete items["autoLoadingFields"][window.location.href];
-                chrome.storage.local.set({ "autoLoadingFields": items });
+                delete items[AUTO_LOADING_FIELDS_KEY][window.location.href];
+                chrome.storage.local.set({ [AUTO_LOADING_FIELDS_KEY]: items[AUTO_LOADING_FIELDS_KEY] });
             }
         }
     }
