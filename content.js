@@ -114,18 +114,19 @@ function loadFile(filePath, callback) {
 // The context menu was clicked
 chrome.runtime.onMessage.addListener((message) => {
     const focusedEle = document.activeElement;
+    if (!focusedEle) return;
     const parent = focusedEle.parentElement;
+    if (!parent) return;
+
     if (message.autoloadCurrentElement !== undefined) {
         // Save the current element for autoloading
         console.log("Autoloading current element");
         const url = window.location.href;
         let fieldID = focusedEle.id;
-        if (parent) {
-            const container = containers[parent.id];
-            if (container) {
-                // If the editor is already active, save the ID of the original element
-                fieldID = container.originalElement;
-            }
+        const container = containers[parent.id];
+        if (container) {
+            // If the editor is already active, save the ID of the original element
+            fieldID = container.originalElement;
         }
         if (fieldID === undefined || fieldID === false) return; 
         
@@ -140,20 +141,20 @@ chrome.runtime.onMessage.addListener((message) => {
     } else {
         const container = containers[parent.id];
         if (container){
-        const { editor } = container;
-        if (message.changeMode !== undefined) {
-            editor.session.setMode(`ace/mode/${message.changeMode}`);
-            chrome.storage.local.set({[LAST_USED_LANGUAGE_KEY]: message.changeMode});
-            console.log("Saved changeMode as: ", message.changeMode);
-        } else if (message.changeTheme !== undefined) {
-            editor.setTheme(`ace/theme/${message.changeTheme}`);
-            chrome.storage.local.set({[LAST_USED_THEME_KEY]: message.changeTheme});
-            console.log("Saved changeTheme as: ", message.changeTheme);
-        } else if (message.toggleWordWrapping !== undefined) {
-            editor.setWordWrapping(message.toggleWordWrapping);
-            chrome.storage.local.set({[WORD_WRAPPING_KEY]: message.toggleWordWrapping});
-            console.log("Saved toggleWordWrapping as: ", message.toggleWordWrapping);
-        }
+            const { editor } = container;
+            if (message.changeMode !== undefined) {
+                editor.session.setMode(`ace/mode/${message.changeMode}`);
+                chrome.storage.local.set({[LAST_USED_LANGUAGE_KEY]: message.changeMode});
+                console.log("Saved changeMode as: ", message.changeMode);
+            } else if (message.changeTheme !== undefined) {
+                editor.setTheme(`ace/theme/${message.changeTheme}`);
+                chrome.storage.local.set({[LAST_USED_THEME_KEY]: message.changeTheme});
+                console.log("Saved changeTheme as: ", message.changeTheme);
+            } else if (message.toggleWordWrapping !== undefined) {
+                editor.setWordWrapping(message.toggleWordWrapping);
+                chrome.storage.local.set({[WORD_WRAPPING_KEY]: message.toggleWordWrapping});
+                console.log("Saved toggleWordWrapping as: ", message.toggleWordWrapping);
+            }
         } 
     }
 });
