@@ -16,6 +16,8 @@ A lightweight Chrome extension that transforms any `<textarea>` on a webpage int
 
 ## 📦 Installation
 
+Install from [Chrome Web Store](https://chromewebstore.google.com/detail/inline-code-editor/imdbcnhelaoofnjnlbcdcjcmgampiman)
+__For Developemnt:__
 1. Download or clone this repository.
 2. Go to `chrome://extensions/` in your Chrome browser.
 3. Enable **Developer Mode** (top-right).
