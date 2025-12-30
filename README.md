@@ -17,7 +17,7 @@ A lightweight Chrome extension that transforms any `<textarea>` on a webpage int
 ## 📦 Installation
 
 Install from [Chrome Web Store](https://chromewebstore.google.com/detail/inline-code-editor/imdbcnhelaoofnjnlbcdcjcmgampiman)
-__For Developemnt:__
+__For Development:__
 1. Download or clone this repository.
 2. Go to `chrome://extensions/` in your Chrome browser.
 3. Enable **Developer Mode** (top-right).
@@ -27,7 +27,7 @@ __For Developemnt:__
 
 ## 🔌 How It Works
 
-Upon loading a webpage, and focus on a `<textarea>` element, then to toggle the editor either:
+Upon loading a webpage, and focusing on a `<textarea>` element, you can toggle the editor by either:
 - Use the short cut `Ctrl` + `Shift` + `U` keys.
 - Right click on the element and choose `Edit it`.
 

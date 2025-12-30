@@ -39,7 +39,7 @@ Thank you for your interest in contributing to Inline Code Editor! Your help is 
      ```
 
 7. **Open a Pull Request**
-   - Go to the original [Tabs Manager repository](https://github.com/islamElbanna/Inline-Code-Editor).
+   - Go to the original [Inline Code Editor repository](https://github.com/islamElbanna/Inline-Code-Editor).
    - Click "Compare & pull request" and submit your pull request.
    - Reference any related issues in your PR description.
 

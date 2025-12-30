@@ -26,10 +26,12 @@ const aceModesFirstLetterContextmenuIDs = {};
 
 // Ensure context menus are only created once
 chrome.runtime.onInstalled.addListener(() => {
-    createEditItContextMenu();
-    createModesContextMenu();
-    createThemesContextMenu();
-    createPreferencesContextMenu();
+    chrome.contextMenus.removeAll(() => {
+        createEditItContextMenu();
+        createModesContextMenu();
+        createThemesContextMenu();
+        createPreferencesContextMenu();
+    });
 });
 
 // Handle context menu clicks in MV3
