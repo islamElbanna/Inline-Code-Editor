@@ -7,13 +7,6 @@ const defaultLanguage = "javascript";
 const defaultTheme = "github";
 const defaultWordWrapping = false;
 
-// Keyboard shortcut: Ctrl + Shift + U
-document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.shiftKey && e.code === 'KeyU') {
-        handleEditorForActiveElement();
-    }
-});
-
 function handleEditorForActiveElement() {
     const focusedEle = document.activeElement;
     if (!focusedEle) return;
@@ -21,11 +14,11 @@ function handleEditorForActiveElement() {
     // Check if we are inside an Ace editor (ace_content or ace_text-input)
     // We need to find the container div that we created.
     // The structure typically is: wrapper > .ace_editor > .ace_scroller > .ace_content > .ace_text-input (when focused)
-    
+
     // Traverse up to find if we are in an editor container
     let current = focusedEle;
     let containerId = null;
-    
+
     while (current && current !== document.body) {
         if (containers[current.id]) {
             containerId = current.id;
@@ -38,19 +31,19 @@ function handleEditorForActiveElement() {
         const { editor, originalElement } = containers[containerId];
         const originalEle = document.getElementById(originalElement);
         const containerDiv = document.getElementById(containerId);
-        
+
         if (containerDiv) containerDiv.remove();
         if (originalEle) originalEle.style.display = 'block';
         if (editor) editor.destroy();
         delete containers[containerId];
-    } else if (focusedEle.tagName === 'TEXTAREA') {
+    } else if (focusedEle.tagName === 'TEXTAREA' || focusedEle.tagName === 'DIV') {
         activateEditor(focusedEle);
     }
 }
 
 function activateEditor(textarea) {
     if (window.ace) {
-       initEditor(textarea);
+        initEditor(textarea);
     } else {
         console.error("Ace not loaded");
     }
@@ -62,13 +55,16 @@ function initEditor(textarea) {
     if (!parent) return;
 
     const editorDiv = document.createElement('div');
+    editorDiv.style.position = 'absolute';
     editorDiv.style.width = `${textarea.offsetWidth}px`;
     editorDiv.style.height = `${textarea.offsetHeight}px`;
+    editorDiv.style.marginTop = `${textarea.offsetTop}px`;
+    editorDiv.style.marginLeft = `${textarea.offsetLeft}px`;
     editorDiv.style.border = '1px solid #ccc';
 
     textarea.style.display = 'none';
     if (!textarea.id) {
-        textarea.id = `ace-editor-${Date.now()}`;
+        textarea.id = `textarea-${Date.now()}`;
     }
     editorDiv.id = `ace-editor-${textarea.id}`;
     parent.insertBefore(editorDiv, textarea);
@@ -79,8 +75,8 @@ function initEditor(textarea) {
         "ace/ext/language_tools",
         "ace/ext/inline_autocomplete"
     ], function (aceInstance) {
-        chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], function(items) {
-            const language = items[LAST_USED_LANGUAGE_KEY] !== undefined ? items[LAST_USED_LANGUAGE_KEY] : defaultLanguage; 
+        chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], function (items) {
+            const language = items[LAST_USED_LANGUAGE_KEY] !== undefined ? items[LAST_USED_LANGUAGE_KEY] : defaultLanguage;
             const theme = items[LAST_USED_THEME_KEY] !== undefined ? items[LAST_USED_THEME_KEY] : defaultTheme;
             const wordWrapping = items[WORD_WRAPPING_KEY] !== undefined ? items[WORD_WRAPPING_KEY] : defaultWordWrapping;
             const editor = aceInstance.edit(editorDiv);
@@ -126,8 +122,8 @@ chrome.runtime.onMessage.addListener((message) => {
             // If the editor is already active, save the ID of the original element
             fieldID = container.originalElement;
         }
-        if (fieldID === undefined || fieldID === false) return; 
-        
+        if (fieldID === undefined || fieldID === false) return;
+
         chrome.storage.local.get(AUTO_LOADING_FIELDS_KEY, function (items) {
             const autoLoadingFields = items[AUTO_LOADING_FIELDS_KEY] || {};
             autoLoadingFields[url] = autoLoadingFields[url] === fieldID ? false : fieldID; // Toggle the field ID
@@ -138,29 +134,28 @@ chrome.runtime.onMessage.addListener((message) => {
         handleEditorForActiveElement();
     } else {
         const container = containers[parent.id];
-        if (container){
+        if (container) {
             const { editor } = container;
             if (message.changeMode !== undefined) {
                 editor.session.setMode(`ace/mode/${message.changeMode}`);
-                chrome.storage.local.set({[LAST_USED_LANGUAGE_KEY]: message.changeMode});
+                chrome.storage.local.set({ [LAST_USED_LANGUAGE_KEY]: message.changeMode });
                 console.log("Saved changeMode as: ", message.changeMode);
             } else if (message.changeTheme !== undefined) {
                 editor.setTheme(`ace/theme/${message.changeTheme}`);
-                chrome.storage.local.set({[LAST_USED_THEME_KEY]: message.changeTheme});
+                chrome.storage.local.set({ [LAST_USED_THEME_KEY]: message.changeTheme });
                 console.log("Saved changeTheme as: ", message.changeTheme);
             } else if (message.toggleWordWrapping !== undefined) {
                 editor.setWordWrapping(message.toggleWordWrapping);
-                chrome.storage.local.set({[WORD_WRAPPING_KEY]: message.toggleWordWrapping});
+                chrome.storage.local.set({ [WORD_WRAPPING_KEY]: message.toggleWordWrapping });
                 console.log("Saved toggleWordWrapping as: ", message.toggleWordWrapping);
             }
-        } 
+        }
     }
 });
 
 
 //Autoload Editor for the saved URLs
 chrome.storage.local.get(AUTO_LOADING_FIELDS_KEY, function (items) {
-    console.log("Checking for auto-loading fields:", items[AUTO_LOADING_FIELDS_KEY]);
     if (items[AUTO_LOADING_FIELDS_KEY] !== undefined) {
         var fieldID = items[AUTO_LOADING_FIELDS_KEY][window.location.href];
         if (fieldID !== undefined && fieldID !== false) {

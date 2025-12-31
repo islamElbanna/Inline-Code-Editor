@@ -55,6 +55,26 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }
 });
 
+// Handle toggle editor command
+chrome.commands.onCommand.addListener((command) => {
+    console.log("Command: " + command);
+    if (command === "toggle-editor") {
+        getCurrentTab((tab) => {
+            editIt(tab.id);
+        });
+    }
+});
+
+function getCurrentTab(callback) {
+    let queryOptions = { active: true, lastFocusedWindow: true };
+    chrome.tabs.query(queryOptions, ([tab]) => {
+        if (chrome.runtime.lastError)
+            console.error(chrome.runtime.lastError);
+        // `tab` will either be a `tabs.Tab` instance or `undefined`.
+        callback(tab);
+    });
+}
+
 function editIt(tabID) {
     chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], (items) => {
         const language = typeof items.lastUsedLanguage === "string" ? items.lastUsedLanguage : defaultLanguage;
