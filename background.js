@@ -7,15 +7,32 @@ const TYPE_CPANEL = 0;
 const TYPE_NORMAL = 1;
 
 const aceModes = [
-    "actionscript", "groovy", "matlab", "properties", "sql", "c_cpp", "html", "mysql", "protobuf", "sqlserver",
-    "clojure", "java", "nginx", "puppet", "swift", "csharp", "javascript", "objectivec", "python", "text", "css",
-    "json5", "pascal", "r", "typescript", "csv", "json", "perl", "ruby", "vue", "dockerfile", "jsp", "pgsql", "rust",
-    "xml", "dot", "kotlin", "php", "scala", "yaml", "gitignore", "makefile", "plain_text", "sh", "golang", "markdown",
-    "powershell", "soy_template"
+    "abap", "abc", "actionscript", "ada", "alda", "apache_conf", "apex", "applescript", "aql", "asciidoc", "asl",
+    "assembly_arm32", "assembly_x86", "astro", "autohotkey", "basic", "batchfile", "bibtex", "c9search", "c_cpp",
+    "cirru", "clojure", "clue", "cobol", "coffee", "coldfusion", "crystal", "csharp", "csound_document",
+    "csound_orchestra", "csound_score", "csp", "css", "csv", "curly", "cuttlefish", "d", "dart", "diff", "django",
+    "dockerfile", "dot", "drools", "edifact", "eiffel", "ejs", "elixir", "elm", "erlang", "flix", "forth", "fortran",
+    "fsharp", "fsl", "ftl", "gcode", "gherkin", "gitignore", "glsl", "gobstones", "golang", "graphqlschema", "groovy",
+    "haml", "handlebars", "haskell", "haskell_cabal", "haxe", "hjson", "html", "html_elixir", "html_ruby", "ini", "io",
+    "ion", "jack", "jade", "java", "javascript", "jexl", "json", "json5", "jsoniq", "jsp", "jssm", "jsx", "julia",
+    "kotlin", "latex", "latte", "less", "liquid", "lisp", "livescript", "logiql", "logtalk", "lsl", "lua", "luapage",
+    "lucene", "makefile", "markdown", "mask", "matlab", "maze", "mediawiki", "mel", "mips", "mixal", "mushcode", "mysql",
+    "nasal", "nginx", "nim", "nix", "nsis", "nunjucks", "objectivec", "ocaml", "odin", "partiql", "pascal", "perl",
+    "pgsql", "php", "php_laravel_blade", "pig", "plain_text", "plsql", "powershell", "praat", "prisma", "prolog",
+    "properties", "protobuf", "prql", "puppet", "python", "qml", "r", "raku", "razor", "rdoc", "red", "redshift",
+    "rhtml", "robot", "rst", "ruby", "rust", "sac", "sass", "scad", "scala", "scheme", "scrypt", "scss", "sh", "sjs",
+    "slim", "smarty", "smithy", "snippets", "soy_template", "space", "sparql", "sql", "sqlserver", "stylus", "svg",
+    "swift", "tcl", "terraform", "tex", "text", "textile", "toml", "tsv", "tsx", "turtle", "twig", "typescript", "vala",
+    "vbscript", "velocity", "verilog", "vhdl", "visualforce", "vue", "wollok", "xml", "xquery", "yaml", "zeek", "zig"
 ];
 const aceThemes = [
-    "chrome", "dracula", "github", "xcode", "clouds", "eclipse", "github_light_default", "terminal",
-    "dawn", "github_dark", "one_dark", "twilight"
+    "ambiance", "chaos", "chrome", "cloud9_day", "cloud9_night", "cloud9_night_low_color", "cloud_editor",
+    "cloud_editor_dark", "clouds", "clouds_midnight", "cobalt", "crimson_editor", "dawn", "dracula", "dreamweaver",
+    "eclipse", "github", "github_dark", "github_light_default", "gob", "gruvbox", "gruvbox_dark_hard",
+    "gruvbox_light_hard", "idle_fingers", "iplastic", "katzenmilch", "kr_theme", "kuroir", "merbivore", "merbivore_soft",
+    "mono_industrial", "monokai", "nord_dark", "one_dark", "pastel_on_dark", "solarized_dark", "solarized_light",
+    "sqlserver", "terminal", "textmate", "tomorrow", "tomorrow_night", "tomorrow_night_blue", "tomorrow_night_bright",
+    "tomorrow_night_eighties", "twilight", "vibrant_ink", "xcode"
 ];
 const defaultLanguage = "javascript";
 const defaultTheme = "github";
@@ -48,10 +65,12 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         chrome.tabs.sendMessage(tab.id, { url: tab.url, autoloadCurrentElement: true });
     } else if (info.menuItemId === "acemodes" || info.menuItemId.startsWith("first_letter_")) {
         // Do nothing for parent menu
-    } else if (aceModes.includes(info.menuItemId)) {
-        chrome.tabs.sendMessage(tab.id, { changeMode: info.menuItemId });
-    } else if (aceThemes.includes(info.menuItemId)) {
-        chrome.tabs.sendMessage(tab.id, { changeTheme: info.menuItemId });
+    } else if (info.menuItemId.startsWith("mode:")) {
+        const mode = info.menuItemId.split(":")[1];
+        chrome.tabs.sendMessage(tab.id, { changeMode: mode });
+    } else if (info.menuItemId.startsWith("theme:")) {
+        const theme = info.menuItemId.split(":")[1];
+        chrome.tabs.sendMessage(tab.id, { changeTheme: theme });
     }
 });
 
@@ -168,7 +187,7 @@ function createModesContextMenu() {
                     aceModesFirstLetterContextmenuIDs[firstLetter] = parentContextMenuID;
                 }
                 chrome.contextMenus.create({
-                    id: language,
+                    id: "mode:" + language,
                     title: language,
                     contexts: ["editable"],
                     checked: items.lastUsedLanguage === language,
@@ -191,7 +210,7 @@ function createThemesContextMenu() {
         chrome.storage.local.get("lastUsedTheme", (items) => {
             aceThemes.forEach((themeName) => {
                 chrome.contextMenus.create({
-                    id: themeName,
+                    id: "theme:" + themeName,
                     title: themeName,
                     checked: items.lastUsedTheme === themeName,
                     contexts: ["editable"],
