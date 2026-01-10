@@ -84,6 +84,26 @@ chrome.commands.onCommand.addListener((command) => {
     }
 });
 
+// Listen for script loading requests from content script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.command === "loadScript" && sender.tab) {
+        const scriptPath = message.script;
+        chrome.scripting.executeScript({
+            target: {
+                tabId: sender.tab.id,
+                frameIds: [sender.frameId]
+            },
+            files: [scriptPath]
+        }).then(() => {
+            sendResponse({ success: true });
+        }).catch((err) => {
+            console.error(`Failed to inject ${scriptPath}:`, err);
+            sendResponse({ success: false, error: err.message });
+        });
+        return true; // Keep channel open for async response
+    }
+});
+
 function getCurrentTab(callback) {
     let queryOptions = { active: true, lastFocusedWindow: true };
     chrome.tabs.query(queryOptions, ([tab]) => {
@@ -95,16 +115,30 @@ function getCurrentTab(callback) {
 }
 
 function editIt(tabID) {
+    // Inject Ace if not already there, then send "edit: it"
+    // We can just inject ace.js every time; if it's already there, it re-executes but that's generally okay,
+    // OR content script can request it.
+    // Better approach: Send message. If content script says "Ace not found", then inject it.
+    // Even better: Content script handles the Logic. Background just says "Edit it".
+    // If content script needs ace, it sends "loadScript" to background.
+
     chrome.storage.local.get(["lastUsedLanguage", "lastUsedTheme", "wordWrapping"], (items) => {
         const language = typeof items.lastUsedLanguage === "string" ? items.lastUsedLanguage : defaultLanguage;
         const theme = typeof items.lastUsedTheme === "string" ? items.lastUsedTheme : defaultTheme;
         const wordWrapping = typeof items.wordWrapping === "boolean" ? items.wordWrapping : defaultWordWrapping;
 
-        sendMessage(tabID, {
+        // Try sending message first
+        chrome.tabs.sendMessage(tabID, {
             edit: "it",
             language,
             theme,
             wordWrapping
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                // Content script might not be ready or page not reload. 
+                // In MV3, if we removed all scripts, we rely on content.js being there.
+                console.warn("Could not send message to tab: ", chrome.runtime.lastError.message);
+            }
         });
     });
 }

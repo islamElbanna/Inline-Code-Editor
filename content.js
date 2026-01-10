@@ -7,15 +7,25 @@ const defaultLanguage = "javascript";
 const defaultTheme = "github";
 const defaultWordWrapping = false;
 
+
+function loadScript(path) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ command: "loadScript", script: path }, (response) => {
+            if (response && response.success) {
+                resolve();
+            } else {
+                reject(new Error(response?.error || "Unknown error loading script " + path));
+            }
+        });
+    });
+}
+
+
 function handleEditorForActiveElement() {
     const focusedEle = document.activeElement;
     if (!focusedEle) return;
 
-    // Check if we are inside an Ace editor (ace_content or ace_text-input)
-    // We need to find the container div that we created.
-    // The structure typically is: wrapper > .ace_editor > .ace_scroller > .ace_content > .ace_text-input (when focused)
-
-    // Traverse up to find if we are in an editor container
+    // Check if we are inside an Ace editor
     let current = focusedEle;
     let containerId = null;
 
@@ -41,12 +51,19 @@ function handleEditorForActiveElement() {
     }
 }
 
-function activateEditor(textarea) {
-    if (window.ace) {
-        initEditor(textarea);
-    } else {
-        console.error("Ace not loaded");
+async function activateEditor(textarea) {
+    if (!window.ace) {
+        try {
+            await loadScript("ace/ace.js");
+            // Load common extensions
+            await loadScript("ace/ext-language_tools.js");
+            await loadScript("ace/ext-inline_autocomplete.js");
+        } catch (e) {
+            console.error("Failed to load Ace Editor:", e);
+            return;
+        }
     }
+    initEditor(textarea);
 }
 
 function initEditor(textarea) {
@@ -55,12 +72,26 @@ function initEditor(textarea) {
     if (!parent) return;
 
     const editorDiv = document.createElement('div');
+    // Using getBoundingClientRect for absolute positioning relative to viewport/page
+    // But since we are injecting into parent, simpler logic:
+    // Match the size of the original textarea
+    const rect = textarea.getBoundingClientRect();
+
+    // Note: The original logic replaced the element *in flow* but used absolute positioning.
+    // If we want to overlay, we need correct positioning.
+    // Original logic: parent.insertBefore(editorDiv, textarea);
+    // This puts it in the DOM. Absolute positioning takes it out of flow.
+    // If textarea is display:none, parent might collapse if it was the only child.
+    // Better: keep it simple to original logic for now, just fix lazy loading. 
+    // I will stick to original positioning logic to minimize regression risk unless I see it broken.
+
     editorDiv.style.position = 'absolute';
     editorDiv.style.width = `${textarea.offsetWidth}px`;
     editorDiv.style.height = `${textarea.offsetHeight}px`;
     editorDiv.style.marginTop = `${textarea.offsetTop}px`;
     editorDiv.style.marginLeft = `${textarea.offsetLeft}px`;
     editorDiv.style.border = '1px solid #ccc';
+    editorDiv.style.zIndex = '10000'; // Ensure it's on top if absolute
 
     textarea.style.display = 'none';
     if (!textarea.id) {
@@ -69,16 +100,38 @@ function initEditor(textarea) {
     editorDiv.id = `ace-editor-${textarea.id}`;
     parent.insertBefore(editorDiv, textarea);
 
-    ace.config.set('basePath', chrome.runtime.getURL('ace'));
+    // Prevent Ace from trying to lazy-load files using document.createElement ("Main World" issue)
+    ace.config.set('basePath', '');
+    ace.config.set('modePath', '');
+    ace.config.set('themePath', '');
+    // Worker path MUST be set for syntax validation to work
+    ace.config.set('workerPath', chrome.runtime.getURL('ace'));
+    // Force loading worker from URL (extension resource) instead of Blob
+    ace.config.set('loadWorkerFromBlob', true);
+
+    // Ensure require works.
     ace.require([
         "ace/ace",
         "ace/ext/language_tools",
         "ace/ext/inline_autocomplete"
     ], function (aceInstance) {
-        chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], function (items) {
+        chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], async function (items) {
             const language = items[LAST_USED_LANGUAGE_KEY] !== undefined ? items[LAST_USED_LANGUAGE_KEY] : defaultLanguage;
             const theme = items[LAST_USED_THEME_KEY] !== undefined ? items[LAST_USED_THEME_KEY] : defaultTheme;
             const wordWrapping = items[WORD_WRAPPING_KEY] !== undefined ? items[WORD_WRAPPING_KEY] : defaultWordWrapping;
+
+            // Load mode, theme, and snippets now
+            try {
+                await loadScript(`ace/mode-${language}.js`);
+                await loadScript(`ace/theme-${theme}.js`);
+                // Start loading snippets but don't fail if they don't exist (most standard languages have them)
+                await loadScript(`ace/snippets/${language}.js`);
+            } catch (err) {
+                // Snippet might fail if it doesn't exist, which is fine, but mode/theme failure is bad.
+                // We log but continue, allowing editor to at least try to render.
+                console.warn("Failed to load mode/theme/snippet:", err);
+            }
+
             const editor = aceInstance.edit(editorDiv);
             editor.session.setMode("ace/mode/" + language);
             editor.setTheme("ace/theme/" + theme);
@@ -89,6 +142,7 @@ function initEditor(textarea) {
                 enableLiveAutocompletion: true,
                 autoScrollEditorIntoView: true,
             });
+            // Enable worker for syntax validation
             editor.session.setUseWorker(true);
             editor.session.setUseWrapMode(wordWrapping);
             editor.session.addMarker(editor.selection.toOrientedRange(), "ace_selected_word", "text");
@@ -137,13 +191,22 @@ chrome.runtime.onMessage.addListener((message) => {
         if (container) {
             const { editor } = container;
             if (message.changeMode !== undefined) {
-                editor.session.setMode(`ace/mode/${message.changeMode}`);
-                chrome.storage.local.set({ [LAST_USED_LANGUAGE_KEY]: message.changeMode });
-                console.log("Saved changeMode as: ", message.changeMode);
+                // Load mode and snippets
+                const modePromise = loadScript(`ace/mode-${message.changeMode}.js`);
+                // Assume snippet matches mode name
+                const snippetPromise = loadScript(`ace/snippets/${message.changeMode}.js`).catch(() => { });
+
+                Promise.all([modePromise, snippetPromise]).then(() => {
+                    editor.session.setMode(`ace/mode/${message.changeMode}`);
+                    chrome.storage.local.set({ [LAST_USED_LANGUAGE_KEY]: message.changeMode });
+                    console.log("Saved changeMode as: ", message.changeMode);
+                }).catch(e => console.error("Failed to load mode/snippet:", e));
             } else if (message.changeTheme !== undefined) {
-                editor.setTheme(`ace/theme/${message.changeTheme}`);
-                chrome.storage.local.set({ [LAST_USED_THEME_KEY]: message.changeTheme });
-                console.log("Saved changeTheme as: ", message.changeTheme);
+                loadScript(`ace/theme-${message.changeTheme}.js`).then(() => {
+                    editor.setTheme(`ace/theme/${message.changeTheme}`);
+                    chrome.storage.local.set({ [LAST_USED_THEME_KEY]: message.changeTheme });
+                    console.log("Saved changeTheme as: ", message.changeTheme);
+                }).catch(e => console.error("Failed to load theme:", e));
             } else if (message.toggleWordWrapping !== undefined) {
                 editor.setWordWrapping(message.toggleWordWrapping);
                 chrome.storage.local.set({ [WORD_WRAPPING_KEY]: message.toggleWordWrapping });
