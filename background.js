@@ -51,6 +51,21 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+// Sync the autoload checkbox state when the context menu is about to be shown
+chrome.contextMenus.onShown?.addListener((info, tab) => {
+    if (!tab || !tab.url) return;
+    chrome.storage.local.get("autoLoadingFields", (items) => {
+        const autoLoadingFields = items.autoLoadingFields || {};
+        const isAutoloaded = !!autoLoadingFields[tab.url];
+        chrome.contextMenus.update("autoload", { checked: isAutoloaded }, () => {
+            if (chrome.runtime.lastError) {
+                // Menu item might not exist yet
+            }
+            chrome.contextMenus.refresh?.();
+        });
+    });
+});
+
 // Handle context menu clicks in MV3
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (!tab || !tab.id) {
@@ -67,10 +82,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         // Do nothing for parent menu
     } else if (info.menuItemId.startsWith("mode:")) {
         const mode = info.menuItemId.split(":")[1];
-        chrome.tabs.sendMessage(tab.id, { changeMode: mode });
+        changeLanguage(tab.id, mode);
     } else if (info.menuItemId.startsWith("theme:")) {
         const theme = info.menuItemId.split(":")[1];
-        chrome.tabs.sendMessage(tab.id, { changeTheme: theme });
+        changeTheme(tab.id, theme);
     }
 });
 
@@ -79,7 +94,11 @@ chrome.commands.onCommand.addListener((command) => {
     console.log("Command: " + command);
     if (command === "toggle-editor") {
         getCurrentTab((tab) => {
-            editIt(tab.id);
+            if (tab) {
+                editIt(tab.id);
+            } else {
+                console.warn("No active tab found for toggle-editor command.");
+            }
         });
     }
 });
@@ -215,7 +234,6 @@ function createModesContextMenu() {
                         id: "first_letter_" + firstLetter,
                         title: firstLetter.toUpperCase(),
                         contexts: ["editable"],
-                        checked: typeof items.lastUsedLanguage === "string" && items.lastUsedLanguage.startsWith(firstLetter),
                         parentId: "acemodes"
                     });
                     aceModesFirstLetterContextmenuIDs[firstLetter] = parentContextMenuID;
@@ -223,6 +241,7 @@ function createModesContextMenu() {
                 chrome.contextMenus.create({
                     id: "mode:" + language,
                     title: language,
+                    type: "radio",
                     contexts: ["editable"],
                     checked: items.lastUsedLanguage === language,
                     parentId: parentContextMenuID
@@ -246,6 +265,7 @@ function createThemesContextMenu() {
                 chrome.contextMenus.create({
                     id: "theme:" + themeName,
                     title: themeName,
+                    type: "radio",
                     checked: items.lastUsedTheme === themeName,
                     contexts: ["editable"],
                     parentId: "acethemes"
