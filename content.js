@@ -67,7 +67,7 @@ async function activateEditor(textarea) {
 }
 
 function initEditor(textarea) {
-    const value = textarea.value;
+    const value = textarea.value || textarea.innerText || textarea.textContent || "";
     const parent = textarea.parentElement;
     if (!parent) return;
 
@@ -107,76 +107,80 @@ function initEditor(textarea) {
     // Worker path MUST be set for syntax validation to work
     ace.config.set('workerPath', chrome.runtime.getURL('ace'));
     // Force loading worker from URL (extension resource) instead of Blob
-    ace.config.set('loadWorkerFromBlob', true);
+    ace.config.set('loadWorkerFromBlob', false);
 
-    // Ensure require works.
-    ace.require([
-        "ace/ace",
-        "ace/ext/language_tools",
-        "ace/ext/inline_autocomplete"
-    ], function (aceInstance) {
-        chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], async function (items) {
-            const language = items[LAST_USED_LANGUAGE_KEY] !== undefined ? items[LAST_USED_LANGUAGE_KEY] : defaultLanguage;
-            const theme = items[LAST_USED_THEME_KEY] !== undefined ? items[LAST_USED_THEME_KEY] : defaultTheme;
-            const wordWrapping = items[WORD_WRAPPING_KEY] !== undefined ? items[WORD_WRAPPING_KEY] : defaultWordWrapping;
+    chrome.storage.local.get([LAST_USED_LANGUAGE_KEY, LAST_USED_THEME_KEY, WORD_WRAPPING_KEY], async function (items) {
+        const language = items[LAST_USED_LANGUAGE_KEY] !== undefined ? items[LAST_USED_LANGUAGE_KEY] : defaultLanguage;
+        const theme = items[LAST_USED_THEME_KEY] !== undefined ? items[LAST_USED_THEME_KEY] : defaultTheme;
+        const wordWrapping = items[WORD_WRAPPING_KEY] !== undefined ? items[WORD_WRAPPING_KEY] : defaultWordWrapping;
 
-            // Load mode, theme, and snippets now
-            try {
-                await loadScript(`ace/mode-${language}.js`);
-                await loadScript(`ace/theme-${theme}.js`);
-                // Start loading snippets but don't fail if they don't exist (most standard languages have them)
-                await loadScript(`ace/snippets/${language}.js`);
-            } catch (err) {
-                // Snippet might fail if it doesn't exist, which is fine, but mode/theme failure is bad.
-                // We log but continue, allowing editor to at least try to render.
-                console.warn("Failed to load mode/theme/snippet:", err);
-            }
+        // Load mode, theme, and snippets now
+        try {
+            await loadScript(`ace/mode-${language}.js`);
+            await loadScript(`ace/theme-${theme}.js`);
+            // Start loading snippets but don't fail if they don't exist
+            await loadScript(`ace/snippets/${language}.js`).catch(() => {});
+        } catch (err) {
+            // Mode/theme failure is bad but we continue, allowing editor to at least try to render.
+            console.warn("Failed to load mode/theme:", err);
+        }
 
-            const editor = aceInstance.edit(editorDiv);
-            editor.session.setMode("ace/mode/" + language);
-            editor.setTheme("ace/theme/" + theme);
-            editor.setOptions({
-                enableBasicAutocompletion: true,
-                enableInlineAutocompletion: true,
-                enableSnippets: true,
-                enableLiveAutocompletion: true,
-                autoScrollEditorIntoView: true,
-            });
-            // Enable worker for syntax validation
-            editor.session.setUseWorker(true);
-            editor.session.setUseWrapMode(wordWrapping);
-            editor.session.addMarker(editor.selection.toOrientedRange(), "ace_selected_word", "text");
-            editor.session.on('change', () => {
-                textarea.value = editor.getValue();
-                textarea.textContent = textarea.value;
-            });
-            editor.setValue(value, -1); // -1 to not move cursor
-            containers[editorDiv.id] = {
-                editor,
-                originalElement: textarea.id
-            };
+        const editor = ace.edit(editorDiv);
+        editor.session.setMode("ace/mode/" + language);
+        editor.setTheme("ace/theme/" + theme);
+        editor.setOptions({
+            enableBasicAutocompletion: true,
+            enableInlineAutocompletion: true,
+            enableSnippets: true,
+            enableLiveAutocompletion: true,
+            autoScrollEditorIntoView: true,
         });
+        // Enable worker for syntax validation
+        editor.session.setUseWorker(true);
+        editor.session.setUseWrapMode(wordWrapping);
+        editor.session.on('change', () => {
+            textarea.value = editor.getValue();
+            textarea.textContent = textarea.value;
+        });
+        editor.setValue(value, -1); // -1 to not move cursor
+        containers[editorDiv.id] = {
+            editor,
+            originalElement: textarea.id
+        };
     });
+}
+
+/**
+ * Walk up the DOM from an element to find its containing Ace editor container.
+ * Returns the container ID if found, or null.
+ */
+function findContainerId(element) {
+    let current = element;
+    while (current && current !== document.body) {
+        if (containers[current.id]) {
+            return current.id;
+        }
+        current = current.parentElement;
+    }
+    return null;
 }
 
 // The context menu was clicked
 chrome.runtime.onMessage.addListener((message) => {
     const focusedEle = document.activeElement;
     if (!focusedEle) return;
-    const parent = focusedEle.parentElement;
-    if (!parent) return;
 
     if (message.autoloadCurrentElement !== undefined) {
         // Save the current element for autoloading
         console.log("Autoloading current element");
         const url = window.location.href;
         let fieldID = focusedEle.id;
-        const container = containers[parent.id];
-        if (container) {
+        const containerId = findContainerId(focusedEle);
+        if (containerId) {
             // If the editor is already active, save the ID of the original element
-            fieldID = container.originalElement;
+            fieldID = containers[containerId].originalElement;
         }
-        if (fieldID === undefined || fieldID === false) return;
+        if (!fieldID) return;
 
         chrome.storage.local.get(AUTO_LOADING_FIELDS_KEY, function (items) {
             const autoLoadingFields = items[AUTO_LOADING_FIELDS_KEY] || {};
@@ -187,9 +191,9 @@ chrome.runtime.onMessage.addListener((message) => {
     } else if (message.edit === "it") {
         handleEditorForActiveElement();
     } else {
-        const container = containers[parent.id];
-        if (container) {
-            const { editor } = container;
+        const containerId = findContainerId(focusedEle);
+        if (containerId) {
+            const { editor } = containers[containerId];
             if (message.changeMode !== undefined) {
                 // Load mode and snippets
                 const modePromise = loadScript(`ace/mode-${message.changeMode}.js`);
@@ -208,7 +212,7 @@ chrome.runtime.onMessage.addListener((message) => {
                     console.log("Saved changeTheme as: ", message.changeTheme);
                 }).catch(e => console.error("Failed to load theme:", e));
             } else if (message.toggleWordWrapping !== undefined) {
-                editor.setWordWrapping(message.toggleWordWrapping);
+                editor.session.setUseWrapMode(message.toggleWordWrapping);
                 chrome.storage.local.set({ [WORD_WRAPPING_KEY]: message.toggleWordWrapping });
                 console.log("Saved toggleWordWrapping as: ", message.toggleWordWrapping);
             }
