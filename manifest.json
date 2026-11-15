@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Inline Code Editor",
-  "version": "0.03",
+  "version": "0.3.0",
   "description": "Turn a focused element into an Editor.",
   "permissions": [
     "activeTab",
@@ -40,11 +40,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "ace/**"
+        "ace/*"
       ],
       "matches": [
         "<all_urls>"
-      ]
+      ],
+      "use_dynamic_url": true
     }
   ]
 }
